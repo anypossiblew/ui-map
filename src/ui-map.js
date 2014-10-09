@@ -32,14 +32,36 @@
         restrict: 'A',
         //doesn't work as E for unknown reason
         link: function (scope, elm, attrs) {
+            var map;
           var opts = angular.extend({}, options, scope.$eval(attrs.uiOptions));
-          var map = new window.google.maps.Map(elm[0], opts);
-          var model = $parse(attrs.uiMap);
 
-          //Set scope variable for the map
-          model.assign(scope, map);
+            scope.$on("map.loaded", function(e, type) {
+                if(type == "google" && !map) {
+                    initMap();
+                }
+            });
 
-          bindMapEvents(scope, mapEvents, map, elm);
+            if(window.google&&window.google.maps&&window.google.maps.Map) {
+                initMap();
+            }
+            function initMap() {
+                if (opts.uiMapCache && window[attrs.uiMapCache]) {
+                    elm.replaceWith(window[attrs.uiMapCache]);
+                    map = window[attrs.uiMapCache+"Map"];
+                } else {
+                    if(opts.center&&opts.center.lat&&opts.center.lng) {
+                        opts.center = new google.maps.LatLng(opts.center.lat, opts.center.lng);
+                    }
+                    map = new window.google.maps.Map(elm[0], opts);
+                    var model = $parse(attrs.uiMap);
+
+                    //Set scope variable for the map
+                    model.assign(scope, map);
+
+                    bindMapEvents(scope, mapEvents, map, elm);
+                }
+            }
+
         }
       };
     }]);
@@ -58,25 +80,37 @@
           var model = $parse(attrs.uiMapInfoWindow);
           var infoWindow = model(scope);
 
-          if (!infoWindow) {
-            infoWindow = new window.google.maps.InfoWindow(opts);
-            model.assign(scope, infoWindow);
-          }
+            scope.$on("map.loaded", function(e, type) {
+                if(type == "google" && !map) {
+                    initInfoWindow();
+                }
+            });
 
-          bindMapEvents(scope, infoWindowEvents, infoWindow, elm);
+            if(window.google&&window.google.maps&&window.google.maps.Map) {
+                initInfoWindow();
+            }
 
-          /* The info window's contents dont' need to be on the dom anymore,
-           google maps has them stored.  So we just replace the infowindow element
-           with an empty div. (we don't just straight remove it from the dom because
-           straight removing things from the dom can mess up angular) */
-          elm.replaceWith('<div></div>');
+            function initInfoWindow() {
+                if (!infoWindow) {
+                    infoWindow = new window.google.maps.InfoWindow(opts);
+                    model.assign(scope, infoWindow);
+                }
 
-          //Decorate infoWindow.open to $compile contents before opening
-          var _open = infoWindow.open;
-          infoWindow.open = function open(a1, a2, a3, a4, a5, a6) {
-            $compile(elm.contents())(scope);
-            _open.call(infoWindow, a1, a2, a3, a4, a5, a6);
-          };
+                bindMapEvents(scope, infoWindowEvents, infoWindow, elm);
+
+                /* The info window's contents dont' need to be on the dom anymore,
+                 google maps has them stored.  So we just replace the infowindow element
+                 with an empty div. (we don't just straight remove it from the dom because
+                 straight removing things from the dom can mess up angular) */
+                elm.replaceWith('<div></div>');
+
+                //Decorate infoWindow.open to $compile contents before opening
+                var _open = infoWindow.open;
+                infoWindow.open = function open(a1, a2, a3, a4, a5, a6) {
+                    $compile(elm.contents())(scope);
+                    _open.call(infoWindow, a1, a2, a3, a4, a5, a6);
+                };
+            }
         }
       };
     }]);
@@ -124,5 +158,111 @@
 
   mapOverlayDirective('uiMapGroundOverlay',
     'click dblclick');
+
+    app.provider('uiMapLoadParams', function uiMapLoadParams() {
+        var params = {
+            sensor: true
+        };
+
+        this.setParams = function(ps) {
+            params = ps;
+        };
+
+        this.$get = function uiMapLoadParamsFactory() {
+            return params;
+        };
+    })
+        .directive('uiMapAsyncLoad', ['$window', '$parse', 'uiMapLoadParams',
+            function ($window, $parse, uiMapLoadParams) {
+                return {
+                    restrict: 'A',
+                    link: function (scope, element, attrs) {
+
+                        $window.mapgoogleLoadedCallback = function mapgoogleLoadedCallback(){
+                            scope.$broadcast("map.loaded", "google");
+                        };
+
+                        var params = angular.extend({}, uiMapLoadParams, scope.$eval(attrs.uiMapAsyncLoad));
+
+                        params.callback = "mapgoogleLoadedCallback";
+
+                        if(!($window.google&&$window.google.maps)) {
+                            var script = document.createElement("script");
+                            script.type = "text/javascript";
+                            script.src = "http://maps.googleapis.com/maps/api/js?" + param(params);
+                            document.body.appendChild(script);
+                        }else {
+                            mapgoogleLoadedCallback();
+                        }
+                    }
+                }
+            }]);
+
+    /**
+     * 序列化js对象
+     *
+     * @param a
+     * @param traditional
+     * @returns {string}
+     */
+    function param(a, traditional) {
+        var prefix,
+            s = [],
+            add = function (key, value) {
+                // If value is a function, invoke it and return its value
+                value = angular.isFunction(value) ? value() : ( value == null ? "" : value );
+                s[ s.length ] = encodeURIComponent(key) + "=" + encodeURIComponent(value);
+            };
+
+        // If an array was passed in, assume that it is an array of form elements.
+        if (angular.isArray(a) || ( a.jquery && !angular.isObject(a) )) {
+            // Serialize the form elements
+            angular.forEach(a, function () {
+                add(this.name, this.value);
+            });
+
+        } else {
+            // If traditional, encode the "old" way (the way 1.3.2 or older
+            // did it), otherwise encode params recursively.
+            for (prefix in a) {
+                buildParams(prefix, a[ prefix ], traditional, add);
+            }
+        }
+
+        // Return the resulting serialization
+        return s.join("&").replace(r20, "+");
+    }
+
+    var r20 = /%20/g;
+
+    function buildParams(prefix, obj, traditional, add) {
+        var name;
+
+        if (angular.isArray(obj)) {
+            // Serialize array item.
+            angular.forEach(obj, function (v, i) {
+                if (traditional || rbracket.test(prefix)) {
+                    // Treat each array item as a scalar.
+                    add(prefix, v);
+
+                } else {
+                    // Item is non-scalar (array or object), encode its numeric index.
+                    buildParams(prefix + "[" + ( typeof v === "object" ? i : "" ) + "]", v, traditional, add);
+                }
+            });
+
+        } else if (!traditional && angular.isObject(obj)) {
+            // Serialize object item.
+            for (name in obj) {
+                buildParams(prefix + "[" + name + "]", obj[ name ], traditional, add);
+            }
+
+        } else {
+            // Serialize scalar item.
+            add(prefix, obj);
+        }
+    }
+
+    var decode = decodeURIComponent;
 
 })();
