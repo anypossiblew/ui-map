@@ -4,5 +4,5 @@
                    ' type="text/javascript"><' + '/script>');
   }
  
-  getScript("http://maps.googleapis.com/maps/api/js?sensor=false");
+  getScript("http://webapi.amap.com/maps?v=1.2&key=53f7e239ddb8ea62ba552742a233ed1f");
 })();

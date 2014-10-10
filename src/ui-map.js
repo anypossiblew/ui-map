@@ -1,5 +1,4 @@
 'use strict';
-
 (function () {
   var app = angular.module('ui.map', ['ui.event']);
 
