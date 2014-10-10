@@ -20,7 +20,7 @@
   }
 
   app.value('uiMapConfig', {}).directive('uiMap',
-    ['uiMapConfig', '$parse', function (uiMapConfig, $parse) {
+    ['uiMapConfig', '$parse', '$timeout', function (uiMapConfig, $parse, $timeout) {
 
       var mapEvents = 'bounds_changed center_changed click dblclick drag dragend ' +
         'dragstart heading_changed idle maptypeid_changed mousemove mouseout ' +
@@ -42,7 +42,9 @@
             });
 
             if(window.google&&window.google.maps&&window.google.maps.Map) {
-                initMap();
+                $timeout(function() {
+                    initMap();
+                }, 200);
             }
             function initMap() {
                 if (opts.uiMapCache && window[attrs.uiMapCache]) {
