@@ -21,7 +21,7 @@ angular.module('doc.ui-map', ['ui.map'])
         $scope.myMarkers = [];
 
         $scope.mapOptions = {
-            center: {lat: 35.784, lng: 116},
+            centerPoint: {lat: 35.784, lng: 116},
             zoom: 15
 //            ,
 //            mapTypeId: google.maps.MapTypeId.ROADMAP

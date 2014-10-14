@@ -50,8 +50,8 @@
                     elm.replaceWith(window[attrs.uiMapCache]);
                     map = window[attrs.uiMapCache+"Map"];
                 } else {
-                    if(opts.center&&opts.center.lat&&opts.center.lng) {
-                        opts.center = new google.maps.LatLng(opts.center.lat, opts.center.lng);
+                    if(opts.centerPoint&&opts.centerPoint.lat&&opts.centerPoint.lng) {
+                        opts.center = new google.maps.LatLng(opts.centerPoint.lat, opts.centerPoint.lng);
                     }
                     map = new window.google.maps.Map(elm[0], opts);
                     var model = $parse(attrs.uiMap);
@@ -82,7 +82,7 @@
           var infoWindow = model(scope);
 
             scope.$on("map.loaded", function(e, type) {
-                if(type == "google" && !map) {
+                if(type == "google" && !infoWindow) {
                     initInfoWindow();
                 }
             });

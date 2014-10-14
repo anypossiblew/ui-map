@@ -1,6 +1,6 @@
 {
   "name": "angular-ui-map-google",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "This directive allows you to add map elements.",
   "author": "https://github.com/anypossiblew/ui-map/graphs/contributors",
   "license": "MIT",
